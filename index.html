@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+
+    <!-- end of bootstrap imports -->
+    <!-- script for handling the autocomplete and fetching details request -->
+    <script>
+      //function to handle user data submission for the company name and fetching the data from backend
+      function loadData() {
+        var e = document.getElementById("dataHolder");
+        var companyName = document.getElementById("companyName").value;
+        var companyObject = companyName.split("  ");
+        //getting the first element i.e. company code and removing extra spaces
+        var companyCode = companyObject[0].trim();
+        console.log(companyCode);
+
+        document.getElementById("loader").style.display = "block";
+        document.getElementById("output").style.display = "none";
+
+        var xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function() {
+          if (xhr.readyState == 4 && xhr.status == 200) {
+            document.getElementById("loader").style.display = "none";
+            document.getElementById("output").style.display = "block";
+            //on getting the output, disabling the spinner and showing the meeting details
+            e.innerHTML = xhr.responseText;
+          }
+        };
+        //the endpoint 'getMeetingDetails' return the meeting details
+        //param : companyName
+        xhr.open("GET", "/getMeetingDetails?companyName=" + companyCode, true);
+        try {
+          xhr.send();
+        } catch (err) {}
+      }
+
+      //handling the autocompletion for the comapny name
+      function handleSuggestion() {
+        window.hinterXHR = new XMLHttpRequest();
+        var input = document.getElementById("companyName");
+        var listOfOptions = document.getElementById("listOfOptions");
+        // minimum number of characters before we start to generate suggestions
+        var min_characters = 2;
+
+        if (!isNaN(input.value) || input.value.length < min_characters) {
+          return;
+        } else {
+          window.hinterXHR.abort();
+          window.hinterXHR.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+              listOfOptions.innerHTML = "";
+              var clearRes = this.responseText
+                .replace("[", "")
+                .replace(",]", "");
+              var res = clearRes.split(",");
+              res.forEach(function(item) {
+                // Create a new <option> element.
+                var option = document.createElement("option");
+                option.value = item;
+                listOfOptions.appendChild(option);
+              });
+            }
+          };
+
+          var data = input.value;
+          //endpoint /getSuggestions return the value for comapny name
+          window.hinterXHR.open("GET", "/getSuggestions?query=" + input.value);
+
+          window.hinterXHR.send(data);
+        }
+      }
+    </script>
+    <title>NSE Board Meeting Details</title>
+  </head>
+  <body>
+    <div id="dataHolder">
+      <!-- Navbar starts -->
+      <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <a class="navbar-brand" href="#">NSE | Board Meeting Details</a>
+      </nav>
+
+      <!-- Navbar ends -->
+      <div class="container">
+        <!-- Content here -->
+        <br />
+        Search for company :
+        <div class="row">
+          <div class="col-sm">
+            <input
+              id="companyName"
+              type="text"
+              class="form-control"
+              list="listOfOptions"
+              onkeyup="handleSuggestion()"
+            />
+
+            <datalist id="listOfOptions"> </datalist>
+          </div>
+          <div class="col-sm">
+            <button
+              onclick="loadData()"
+              type="button"
+              class="btn btn-primary"
+              style="background-color: #387ed1;"
+            >
+              Search
+            </button>
+          </div>
+        </div>
+        <br />
+        <div class="text-center" style="display: none;" id="loader">
+          <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+          </div>
+        </div>
+        <div id="output">
+          <div class="row ">
+            <div class="col col-lg col-md-8 col-sm-6">
+              {{if not . }}
+              <div class="alert alert-danger" role="alert">
+                No data found
+              </div>
+              {{end}} {{if .}}
+              <div>
+                <div class="card">
+                  <div class="card-header">
+                    Company : {{ (index . 0).Name }}
+                  </div>
+                </div>
+              </div>
+              {{end}}
+            </div>
+          </div>
+          <div class="row" style="padding: 0 15px;">
+            {{range .}}
+            <div class="card" style="width: 23rem;">
+              <div class="card-body">
+                <h5 class="card-title">{{.Purpose}}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{.Date}}</h6>
+                <p class="card-text">
+                  {{.Details}}
+                </p>
+              </div>
+            </div>
+            {{end}}
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
